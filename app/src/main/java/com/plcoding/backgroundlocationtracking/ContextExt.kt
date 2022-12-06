@@ -4,10 +4,8 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
-// Siguiendo los principios de Clean Code
-// Generamos este revisor de permisos
-// Según contexto, para evitar la redundancia
-// De codigo
+// Del paquete de Android, recibimos el contexto
+// de los permisos accedidos, y validamos
 fun Context.hasLocationPermission(): Boolean {
     return ContextCompat.checkSelfPermission(
         this,

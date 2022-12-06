@@ -19,7 +19,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.BackgroundLocationTracking"
         tools:targetApi="31">
-
+        <!--    hay que declarar el service, o android no nos va a dejar acceder   -->
         <service android:name=".LocationService" android:foregroundServiceType="location" />
 
         <activity

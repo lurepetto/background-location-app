@@ -16,60 +16,58 @@ import kotlinx.coroutines.launch
 
 class DefaultLocationClient(
     private val context: Context,
-    // Este tipo de dato es el que se implementa especifcamente
-    // para obtener la ubicacion en android
+    // Este es para obtener la ubicacion desde la dependencia de android
     private val client: FusedLocationProviderClient
 ): LocationClient {
-    // Acá declaramos la función de la clase que nos obtendrá
-    // La ubicación
+
     @SuppressLint("MissingPermission")
+    // Implementacion del metodo de la interfaz, donde retornaremos el flow
     override fun getLocationUpdates(interval: Long): Flow<Location> {
-        // Usamos un callbackFlow para poder
-        // Ir actualizando la ubicación, junto con sus permisos
+        // transforma un callback a un flow
         return callbackFlow {
-            // Hay que revisar si el usuario aceptó los permisos
-            // de localización
+            // validar aceptación de permisos de usuario
             if(!context.hasLocationPermission()) {
                 throw LocationClient.LocationException("Missing location permission")
             }
-            // Revisamos si es accesible
-            // la ubicación del dispositivo
+
             val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
             val isGpsEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
             val isNetworkEnabled = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+
+            // Revisamos si es accesible la ubicación del dispositivo
             if(!isGpsEnabled && !isNetworkEnabled) {
                 throw LocationClient.LocationException("GPS is disabled")
             }
-            // Creamos peticiones para la ubi
-            // definimos cada cuanto lo haremos,
-            // con el intervalo más rápido, y el
-            // intervalo promedio
+
+            // Peticion de ubi. Definimos cada cuanto y con qué exactitud
             val request = LocationRequest.create()
                 .setInterval(interval)
                 .setFastestInterval(interval)
 
-            // Creamos un callback que será llamado
-            // cada vez que fusedLocationProvideClient
-            // busque una nueva locacion(linea 19)
+            // Acá se crea el callback con el que proveeremos la ultima ubicacion
             val locationCallback = object : LocationCallback() {
+                //  esta función será llamada cada vez que el proveedor fusedLocation
+                // nos entregue la info
                 override fun onLocationResult(result: LocationResult) {
                     super.onLocationResult(result)
-                    // Ahora el último elemento de la lista de locations
-                    // será la última locación que fue buscada
-                    // Así que validamos por la existencia de el último valor
+                    // result contiene una lista de locations
+                    // y la ultima es la más reciente, por lo que
+                    // enviamos esta a través del flow
                     result.locations.lastOrNull()?.let { location ->
                         launch { send(location) }
                     }
                 }
             }
-            // request de actualizacion de ubicacion
+
+            // Acá ocurre la magia
+            // como explicamos anteriormente, callbackFlow sirve para callbacks
+            // con ciclo de vida. Este es el inicio
             client.requestLocationUpdates(
-                request, // nuestra variable request L. 47
-                locationCallback, // nuestra variable de callback L.54
+                request, // nuestra variable request L. 42
+                locationCallback, // nuestra variable de callback L.47
                 Looper.getMainLooper() // Loop del callback flow
             )
-            // Como es un ciclo de callbacks, falta definir
-            // el como parar
+            // y cuando hagamos esta llamada se terminará el flow
             awaitClose {
                 client.removeLocationUpdates(locationCallback)
             }

@@ -16,30 +16,30 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 
 class LocationService: Service() {
-    // scope para ver el tiempo de vida de nuestro servicio
-    // supervisorjob = es para ver si un trabajo falla en el scope
-    // los otros siguen funcionando
-    // Dispatchers.IO son temas de ubicación
+
+    // este service scope esta vinculado al ciclo de vida de nuestro servicio
+    // supervisor job es para que cada scope funcione de manera independiente
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     // Client interface
     private lateinit var locationClient: LocationClient
 
+    // Es necesario bindear la clase
     override fun onBind(p0: Intent?): IBinder? {
         return null
     }
 
+    // creamos el servicio
     override fun onCreate() {
         super.onCreate()
         // le pasamos el contexto a nuestra interface
-        // cuando se cree el servicio
         locationClient = DefaultLocationClient(
             applicationContext,
             LocationServices.getFusedLocationProviderClient(applicationContext)
         )
     }
 
-    // funcion para revisar que acción es llamada
-    // y lanzar el metodo correspondiente
+    // funcion para revisar que acción es llamada y lanzar el metodo correspondiente
+    // cada intent (evento de usuario) disparara esta funcion
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when(intent?.action) {
             ACTION_START -> start()
@@ -48,9 +48,9 @@ class LocationService: Service() {
         return super.onStartCommand(intent, flags, startId)
     }
 
-    // Como es una aplicación que corre en primer plano
     // hay que generar una notificación que muestre la info
     private fun start() {
+        // generamos la notificacion de la app con la info
         val notification = NotificationCompat.Builder(this, "location")
             .setContentTitle("Tracking location...")
             .setContentText("Location: null")
@@ -59,6 +59,7 @@ class LocationService: Service() {
 
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
+        // lanzamos el callback flow
         locationClient
             // Cada 10 segundos dame una actualización de la ubi
             .getLocationUpdates(10000L)
@@ -71,13 +72,12 @@ class LocationService: Service() {
                 val updatedNotification = notification.setContentText(
                     "Location: ($lat, $long)"
                 )
-                // llamamos a la variable (L.60) para actualizar las notificaciones existentes
+                // actualizamos la notificacion existente
                 notificationManager.notify(1, updatedNotification.build())
             }
             .launchIn(serviceScope)
 
         // le pedimos al sistema que corra este servicio en primer plano
-        // y le asignamos un ID
         startForeground(1, notification.build())
     }
 
